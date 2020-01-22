@@ -1,0 +1,49 @@
+
+    int status = CLOSE_TAG;
+
+    yyin = fopen(argv[1], "r");
+    ntoken = yylex();
+
+    char *names[9] = {NULL, "open href tag", "open src tag", "/> or >", "href", "src", "end href or src", "link", "relative_link"};
+
+    while (ntoken) { 
+        if((ntoken == HREF_TAG) && (status == CLOSE_TAG)) {
+            status = HREF_TAG;
+            printf("%s\n", names[ntoken]);
+        } else if ((ntoken == SRC_TAG)){
+            status = SRC_TAG;
+            printf("%s\n", names[ntoken]);
+        } else if ((ntoken == HREF) && (status == HREF_TAG)) {
+            status = HREF;
+            printf("%s\n", names[ntoken]);
+        } else if ((ntoken == SRC) && (status == SRC_TAG)) {
+            status = SRC;
+            printf("%s\n", names[ntoken]);
+        } else if((ntoken == LINK) && (status == HREF)){
+            status = LINK;
+            if(is_link_already_in_list(yytext, ref, last_ref) == 0){ 
+                add_link_to_list(yytext, ref, &last_ref);
+             }
+            printf("%s\n", names[ntoken]);
+        } else if ((ntoken == RELATIVE_LINK) && (status == HREF)){
+            status = LINK;
+            if(is_link_already_in_list(yytext, ref, last_ref) == 0){ 
+                add_link_to_list(yytext, ref, &last_ref);
+             }
+            printf("%s\n", names[ntoken]);
+        } else if ((ntoken == RELATIVE_LINK) && (status == SRC)){
+            status = LINK;
+            if(is_link_already_in_list(yytext, ref, last_ref) == 0){ 
+                add_link_to_list(yytext, ref, &last_ref);
+             }
+            printf("%s\n", names[ntoken]);
+        } else if ((ntoken == END_HREF_OR_SRC) && (status == LINK)){
+            status = END_HREF_OR_SRC;
+            printf("%s\n", names[ntoken]);
+        } else if ((ntoken == CLOSE_TAG) && (status == END_HREF_OR_SRC)){
+            status = CLOSE_TAG;
+            printf("%s\n", names[ntoken]);
+        }
+        print_link_list(ref, last_ref, status);
+        ntoken = yylex();
+    }

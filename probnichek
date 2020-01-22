@@ -1,0 +1,1013 @@
+<!-- This HTML file has been created by texi2html 1.30
+     from flex.texinfo on 6 March 1995 -->
+
+<TITLE>Using <CODE>flex</CODE> - Input and Output Files</TITLE>
+<P>Go to the <A HREF="flex_1.html">previous</A>, <A HREF="flex_3.html">next</A> section.<P>
+<H1><A NAME="SEC5" HREF="flex_toc.html#SEC5">Input and Output Files</A></H1>
+<P>
+<CODE>flex</CODE>'s actions are specified by definitions (which may include
+embedded C code) in one or more input files.  The primary
+output file is <TT>`lex.yy.c'</TT>.  You can also use some of the
+command-line options to get diagnostic output
+(see section <A HREF="flex_3.html#SEC17">Command-line Options</A>).
+This chapter gives the details of how to structure your input to
+define the scanner you need.
+<P>
+<H2><A NAME="SEC6" HREF="flex_toc.html#SEC6">Format of the Input File</A></H2>
+<P>
+The <CODE>flex</CODE> input file consists of three sections, separated by a
+line with just <SAMP>`%%'</SAMP> in it:
+<P>
+<PRE>
+<VAR>definitions</VAR>
+%%
+<VAR>rules</VAR>
+%%
+<VAR>user code</VAR>
+</PRE>
+<P>
+The <VAR>definitions</VAR> section contains declarations of simple name
+definitions to simplify the scanner specification, and declarations of
+start conditions, which are explained in a later section.
+<P>
+Name definitions have the form:
+<P>
+<PRE>
+<VAR>name</VAR> <VAR>definition</VAR>
+</PRE>
+<P>
+The <VAR>name</VAR> is a word beginning with a letter or an underscore
+(<SAMP>`_'</SAMP>) followed by zero or more letters, digits, <SAMP>`_'</SAMP>, or
+<SAMP>`-'</SAMP> (dash).  The definition is taken to begin at the first
+non-whitespace character following the name, and continuing to the end
+of the line.  The definition can subsequently be referred to using
+<SAMP>`{<VAR>name</VAR>}'</SAMP>, which will expand to <SAMP>`(<VAR>definition</VAR>)'</SAMP>.
+For example,
+<P>
+<PRE>
+DIGIT    [0-9]
+ID       [a-z][a-z0-9]*
+</PRE>
+<P>
+defines <SAMP>`DIGIT'</SAMP> to be a regular expression which matches a single
+digit, and <SAMP>`ID'</SAMP> to be a regular expression which matches a letter
+followed by zero or more letters or digits.  A subsequent reference to
+<P>
+<PRE>
+{DIGIT}+"."{DIGIT}*
+</PRE>
+<P>
+is identical to
+<P>
+<PRE>
+([0-9])+"."([0-9])*
+</PRE>
+<P>
+and matches one or more digits followed by a <SAMP>`.'</SAMP> followed by zero
+or more digits.
+<P>
+The rules section of the <CODE>flex</CODE> input contains a series of rules of
+the form:
+<P>
+<PRE>
+<VAR>pattern</VAR>   <VAR>action</VAR>
+</PRE>
+<P>
+where the <VAR>pattern</VAR> must be unindented and the <VAR>action</VAR> must
+begin on the same line.
+<P>
+See below for a further description of patterns and actions.
+<P>
+Finally, the user code section is simply copied to <TT>`lex.yy.c'</TT>
+verbatim.  It is used for companion routines which call or are called by
+the scanner.  The presence of this section is optional; if it is
+missing, the second <SAMP>`%%'</SAMP> in the input file may be skipped, too.
+<P>
+In the definitions and rules sections, any indented text or text
+enclosed in <SAMP>`%{'</SAMP> and <SAMP>`%}'</SAMP> is copied verbatim to the output
+(with the <SAMP>`%{}'</SAMP> removed).  The <SAMP>`%{}'</SAMP> must appear
+unindented on lines by themselves.
+<P>
+In the rules section, any indented or <SAMP>`%{}'</SAMP> text appearing before
+the first rule may be used to declare variables which are local to the
+scanning routine and (after the declarations) code which is to be
+executed whenever the scanning routine is entered.  Other indented or
+<SAMP>`%{}'</SAMP> text in the rule section is still copied to the output, but
+its meaning is not well defined and it may well cause compile-time
+errors (this feature is present for POSIX compliance; see below for
+other such features).
+<P>
+In the definitions section, an unindented comment (i.e., a line
+beginning with <SAMP>`/*'</SAMP>) is also copied verbatim to the output up to
+the next <SAMP>`*/'</SAMP>.  Also, any line in the definitions section beginning
+with <SAMP>`#'</SAMP> is ignored, though this style of comment is deprecated and
+may go away in the future.
+<P>
+<H3><A NAME="SEC7" HREF="flex_toc.html#SEC7">Patterns in the Input</A></H3>
+<P>
+The patterns in the input are written using an extended set of regular
+expressions.  These are:
+<P>
+<DL COMPACT>
+<DT><CODE><VAR>x</VAR></CODE>
+<DD>match the character <SAMP>`<VAR>x</VAR>'</SAMP>
+<P>
+<DT><CODE>.</CODE>
+<DD>any character except newline
+<P>
+<DT><CODE>[xyz]</CODE>
+<DD>a "character class"; in this case, the pattern matches either an
+<SAMP>`x'</SAMP>, a <SAMP>`y'</SAMP>, or a <SAMP>`z'</SAMP>
+<P>
+<DT><CODE>[abj-oZ]</CODE>
+<DD>a "character class" with a range in it; matches an <SAMP>`a'</SAMP>, a
+<SAMP>`b'</SAMP>, any letter from <SAMP>`j'</SAMP> through <SAMP>`o'</SAMP>, or a <SAMP>`Z'</SAMP>
+<P>
+<DT><CODE>[^A-Z]</CODE>
+<DD>a "negated character class", i.e., any character but those in the
+class.  In this case, any character <EM>except</EM> an uppercase letter.
+<P>
+<DT><CODE>[^A-Z\n]</CODE>
+<DD>any character <EM>except</EM> an uppercase letter or a newline
+<P>
+<DT><CODE><VAR>r</VAR>*</CODE>
+<DD>zero or more <VAR>r</VAR>'s, where <VAR>r</VAR> is any regular expression
+<P>
+<DT><CODE><VAR>r</VAR>+</CODE>
+<DD>one or more <VAR>r</VAR>'s
+<P>
+<DT><CODE><VAR>r</VAR>?         zero or one <VAR>r</VAR>'s (that is, "an optional <VAR>r</VAR>")</CODE>
+<DD><P>
+<DT><CODE><VAR>r</VAR>{2,5}</CODE>
+<DD>anywhere from two to five <VAR>r</VAR>'s
+<P>
+<DT><CODE><VAR>r</VAR>{2,}</CODE>
+<DD>two or more <VAR>r</VAR>'s
+<P>
+<DT><CODE><VAR>r</VAR>{4}</CODE>
+<DD>exactly 4 <VAR>r</VAR>'s
+<P>
+<DT><CODE>{<VAR>name</VAR>}</CODE>
+<DD>the expansion of the <VAR>name</VAR> definition (see above)
+<P>
+<DT><CODE>"[xyz]\"foo"</CODE>
+<DD>the literal string: <SAMP>`[xyz]"foo'</SAMP>
+<P>
+<DT><CODE>\<VAR>X</VAR></CODE>
+<DD>if <VAR>X</VAR> is an <SAMP>`a'</SAMP>, <SAMP>`b'</SAMP>, <SAMP>`f'</SAMP>, <SAMP>`n'</SAMP>, <SAMP>`r'</SAMP>, <SAMP>`t'</SAMP>,
+or <SAMP>`v'</SAMP>, then the ANSI C interpretation of <SAMP>`\<VAR>X</VAR>'</SAMP>.
+Otherwise, a literal <SAMP>`<VAR>X</VAR>'</SAMP> (used to escape operators such as
+<SAMP>`*'</SAMP>)
+<P>
+<DT><CODE>\123</CODE>
+<DD>the character with octal value <CODE>123</CODE>
+<P>
+<DT><CODE>\x2a</CODE>
+<DD>the character with hexadecimal value <CODE>2a</CODE>
+<P>
+<DT><CODE>(<VAR>r</VAR>)</CODE>
+<DD>match an <VAR>r</VAR>; parentheses are used to override precedence (see
+below)
+<P>
+<DT><CODE><VAR>r</VAR><VAR>s</VAR></CODE>
+<DD>the regular expression <VAR>r</VAR> followed by the regular expression
+<VAR>s</VAR>; called "concatenation"
+<P>
+<DT><CODE><VAR>r</VAR>|<VAR>s</VAR></CODE>
+<DD>either an <VAR>r</VAR> or an <VAR>s</VAR>
+<P>
+<DT><CODE><VAR>r</VAR>/<VAR>s</VAR></CODE>
+<DD>an <VAR>r</VAR> but only if it is followed by an <VAR>s</VAR>.  The <VAR>s</VAR> is not
+part of the matched text.  This type of pattern is called <DFN>trailing
+context</DFN>.
+<P>
+<DT><CODE>^<VAR>r</VAR></CODE>
+<DD>an <VAR>r</VAR>, but only at the beginning of a line
+<P>
+<DT><CODE><VAR>r</VAR>$</CODE>
+<DD>an <VAR>r</VAR>, but only at the end of a line.  Equivalent to <SAMP>`r/\n'</SAMP>.
+<P>
+<DT><CODE>&#60;<VAR>s</VAR>&#62;<VAR>r</VAR></CODE>
+<DD>an <VAR>r</VAR>, but only in start condition <VAR>s</VAR> (see below for
+discussion of start conditions)
+<P>
+<DT><CODE>&#60;<VAR>s1</VAR>,<VAR>s2</VAR>,<VAR>s3</VAR>&#62;<VAR>r</VAR></CODE>
+<DD>same, but in any of start conditions <VAR>s1</VAR>, <VAR>s2</VAR>, or <VAR>s3</VAR>
+<P>
+<DT><CODE>&#60;&#60;EOF&#62;&#62;</CODE>
+<DD>an end-of-file
+<P>
+<DT><CODE>&#60;<VAR>s1</VAR>,<VAR>s2</VAR>&#62;&#60;&#60;EOF&#62;&#62;</CODE>
+<DD>an end-of-file when in start condition <VAR>s1</VAR> or <VAR>s2</VAR>
+</DL>
+<P>
+The regular expressions listed above are grouped according to
+precedence, from highest precedence at the top to lowest at the bottom.
+Those grouped together have equal precedence.  For example,
+<P>
+<PRE>
+foo|bar*
+</PRE>
+<P>
+is the same as
+<P>
+<PRE>
+(foo)|(ba(r*))
+</PRE>
+<P>
+since the <SAMP>`*'</SAMP> operator has higher precedence than concatenation,
+and concatenation higher than alternation (<SAMP>`|'</SAMP>).  This pattern
+therefore matches either the string <SAMP>`foo'</SAMP> or the string <SAMP>`ba'</SAMP>
+followed by zero or more instances of <SAMP>`r'</SAMP>.  To match <SAMP>`foo'</SAMP> or
+zero or more instances of <SAMP>`bar'</SAMP>, use:
+<P>
+<PRE>
+foo|(bar)*
+</PRE>
+<P>
+and to match zero or more instances of either <SAMP>`foo'</SAMP> or <SAMP>`bar'</SAMP>:
+<P>
+<PRE>
+(foo|bar)*
+</PRE>
+<P>
+Some notes on patterns:
+<P>
+<UL>
+<LI>
+A negated character class such as the example <SAMP>`[^A-Z]'</SAMP> above will
+match a newline unless <SAMP>`\n'</SAMP> (or an equivalent escape sequence) is
+one of the characters explicitly present in the negated character class
+(e.g., <SAMP>`[^A-Z\n]'</SAMP>).  This is unlike how many other regular
+expression tools treat negated character classes, but unfortunately the
+inconsistency is historically entrenched.  Matching newlines means that
+a pattern like <SAMP>`[^"]*'</SAMP> can match an entire input (overflowing the
+scanner's input buffer) unless there's another quote in the input.
+<P>
+<LI>
+A rule can have at most one instance of trailing context (the <SAMP>`/'</SAMP>
+operator or the <SAMP>`$'</SAMP> operator).  The start condition, <SAMP>`^'</SAMP>, and
+<SAMP>`&#60;&#60;EOF&#62;&#62;'</SAMP> patterns can only occur at the beginning of a pattern,
+and, as well as with <SAMP>`/'</SAMP> and <SAMP>`$'</SAMP>, cannot be grouped inside
+parentheses.  A <SAMP>`^'</SAMP> which does not occur at the beginning of a rule
+or a <SAMP>`$'</SAMP> which does not occur at the end of a rule loses its
+special properties and is treated as a normal character.
+</UL>
+<P>
+The following are illegal:
+<P>
+<PRE>
+foo/bar$
+&#60;sc1&#62;foo&#60;sc2&#62;bar
+</PRE>
+<P>
+You can write the first of these instead as <SAMP>`foo/bar\n'</SAMP>.
+<P>
+In the following examples, <SAMP>`$'</SAMP> and <SAMP>`^'</SAMP> are treated as
+normal characters:
+<P>
+<PRE>
+foo|(bar$)
+foo|^bar
+</PRE>
+<P>
+If what you want to specify is "either <SAMP>`foo'</SAMP>, or <SAMP>`bar'</SAMP>
+followed by a newline" you can use the following (the special <SAMP>`|'</SAMP>
+action is explained below):
+<P>
+<PRE>
+foo      |
+bar$     /* action goes here */
+</PRE>
+<P>
+A similar trick will work for matching "either <SAMP>`foo'</SAMP>, or <SAMP>`bar'</SAMP>
+at the beginning of a line."
+<P>
+<H3><A NAME="SEC8" HREF="flex_toc.html#SEC8">How the Input is Matched</A></H3>
+<P>
+When the generated scanner runs, it analyzes its input looking for
+strings which match any of its patterns.  If it finds more than one
+match, it takes the one matching the most text (for trailing context
+rules, this includes the length of the trailing part, even though it
+will then be returned to the input).  If it finds two or more matches of
+the same length, the rule listed first in the <CODE>flex</CODE> input file is
+chosen.
+<P>
+Once the match is determined, the text corresponding to the match
+(called the <DFN>token</DFN>) is made available in the global character
+pointer <CODE>yytext</CODE>, and its length in the global integer
+<CODE>yyleng</CODE>. The action corresponding to the matched pattern is then
+executed (a more detailed description of actions follows), and then the
+remaining input is scanned for another match.
+<P>
+If no match is found, then the default rule is executed: the next
+character in the input is considered matched and copied to the standard
+output.  Thus, the simplest legal <CODE>flex</CODE> input is:
+<P>
+<PRE>
+%%
+</PRE>
+<P>
+which generates a scanner that simply copies its input (one character at
+a time) to its output.
+<P>
+<H3><A NAME="SEC9" HREF="flex_toc.html#SEC9">Actions</A></H3>
+Each pattern in a rule has a corresponding action, which can be any
+arbitrary C statement.  The pattern ends at the first non-escaped
+whitespace character; the remainder of the line is its action.  If the
+action is empty, then when the pattern is matched the input token is
+simply discarded.  For example, here is the specification for a program
+which deletes all occurrences of <SAMP>`zap me'</SAMP> from its input:
+<P>
+<PRE>
+%%
+"zap me"
+</PRE>
+<P>
+(It will copy all other characters in the input to the output since they
+will be matched by the default rule.)
+<P>
+Here is a program which compresses multiple blanks and tabs down to a
+single blank, and throws away whitespace found at the end of a line:
+<P>
+<PRE>
+%%
+[ \t]+        putchar( ' ' );
+[ \t]+$       /* ignore this token */
+</PRE>
+<P>
+If the action contains a <SAMP>`{'</SAMP>, then the action spans till the
+balancing <SAMP>`}'</SAMP> is found, and the action may cross multiple lines.
+<CODE>flex</CODE> knows about C strings and comments and won't be fooled by
+braces found within them, but also allows actions to begin with
+<SAMP>`%{'</SAMP> and will consider the action to be all the text up to the
+next <SAMP>`%}'</SAMP> (regardless of ordinary braces inside the action).
+<P>
+An action consisting solely of a vertical bar (<SAMP>`|'</SAMP>) means "same as
+the action for the next rule."  See below for an illustration.
+<P>
+Actions can include arbitrary C code, including return statements to
+return a value to whatever routine called <CODE>yylex</CODE>. Each time
+<CODE>yylex</CODE> is called it continues processing tokens from where it last
+left off until it either reaches the end of the file or executes a
+return.  Once it reaches an end-of-file, however, then any subsequent
+call to <CODE>yylex</CODE> will simply immediately return, unless
+<CODE>yyrestart</CODE> is first called (see below).
+<P>
+Actions are not allowed to modify <SAMP>`yytext'</SAMP> or <SAMP>`yyleng'</SAMP>.
+<P>
+There are a number of special directives which can be included within an
+action:
+<P>
+<DL COMPACT>
+<DT><CODE>ECHO</CODE>
+<DD>copies <CODE>yytext</CODE> to the scanner's output.
+<P>
+<DT><CODE>BEGIN</CODE>
+<DD>followed by the name of a start condition places the scanner in the
+corresponding start condition (see below).
+<P>
+<DT><CODE>REJECT</CODE>
+<DD>directs the scanner to proceed on to the "second best" rule which
+matched the input (or a prefix of the input).  The rule is chosen as
+described above in section <A HREF="flex_2.html#SEC8">How the Input is Matched</A>, and
+<CODE>yytext</CODE> and <CODE>yyleng</CODE> set up appropriately.  It may either be
+one which matched as much text as the originally chosen rule but came
+later in the <CODE>flex</CODE> input file, or one which matched less text.
+For example, the following will both count the words in the input and
+call the routine <CODE>special</CODE> whenever <SAMP>`frob'</SAMP> is seen:
+<P>
+<PRE>
+        int word_count = 0;
+%%
+
+frob        special(); REJECT;
+[^ \t\n]+   ++word_count;
+</PRE>
+<P>
+Without the <CODE>REJECT</CODE>, any <SAMP>`frob'</SAMP> in the input would not be
+counted as a word, since the scanner normally executes only one action
+per token.  Multiple <CODE>REJECT</CODE> actions are allowed, each one finding
+the next best choice to the currently active rule.  For example, when
+the following scanner scans the token <SAMP>`abcd'</SAMP>, it will write
+<SAMP>`abcdabcaba'</SAMP> to the output:
+<P>
+<PRE>
+%%
+a        |
+ab       |
+abc      |
+abcd     ECHO; REJECT;
+.|\n     /* eat up any unmatched character */
+</PRE>
+<P>
+(The first three rules share the fourth's action, since they use the
+special <SAMP>`|'</SAMP> action.) <CODE>REJECT</CODE> is a particularly expensive
+feature in terms of scanner performance; if it is used in any of the
+scanner's actions, it will slow down all of the scanner's matching.
+Furthermore, <CODE>REJECT</CODE> cannot be used with the <SAMP>`-f'</SAMP> or
+<SAMP>`-F'</SAMP> options (see below).
+<P>
+Note also that unlike the other special actions, <CODE>REJECT</CODE> is a
+branch; code immediately following it in the action will not be
+executed.
+<P>
+<DT><CODE>yymore()</CODE>
+<DD>tells the scanner that the next time it matches a rule, the
+corresponding token should be appended onto the current value of
+<CODE>yytext</CODE> rather than replacing it.  For example, given the input
+<SAMP>`mega-kludge'</SAMP> the following will write <SAMP>`mega-mega-kludge'</SAMP> to
+the output:
+<P>
+<PRE>
+%%
+mega-    ECHO; yymore();
+kludge   ECHO;
+</PRE>
+<P>
+First <SAMP>`mega-'</SAMP> is matched and echoed to the output.  Then
+<SAMP>`kludge'</SAMP> is matched, but the previous <SAMP>`mega-'</SAMP> is still hanging
+around at the beginning of yytext so the ECHO for the <SAMP>`kludge'</SAMP> rule
+will actually write <SAMP>`mega-kludge'</SAMP>.  The presence of <CODE>yymore</CODE>
+in the scanner's action entails a minor performance penalty in the
+scanner's matching speed.
+<P>
+<DT><CODE>yyless(<VAR>n</VAR>)</CODE>
+<DD>returns all but the first <VAR>n</VAR> characters of the current token back
+to the input stream, where they will be rescanned when the scanner looks
+for the next match.  <CODE>yytext</CODE> and <CODE>yyleng</CODE> are adjusted
+appropriately (e.g., <CODE>yyleng</CODE> will now be equal to <VAR>n</VAR>).  For
+example, on the input <SAMP>`foobar'</SAMP> the following will write out
+<SAMP>`foobarbar'</SAMP>:
+<P>
+<PRE>
+%%
+foobar    ECHO; yyless(3);
+[a-z]+    ECHO;
+</PRE>
+<P>
+<SAMP>`yyless(0)'</SAMP> will cause the entire current input string to be
+scanned again.  Unless you've changed how the scanner will subsequently
+process its input (using <CODE>BEGIN</CODE>, for example), this will result in
+an endless loop.
+<P>
+<DT><CODE>unput(<VAR>c</VAR>)</CODE>
+<DD>puts the character <VAR>c</VAR> back onto the input stream.  It will be the
+next character scanned.  The following action will take the current
+token and cause it to be rescanned enclosed in parentheses.
+<P>
+<PRE>
+{
+int i;
+unput( ')' );
+for ( i = yyleng - 1; i &#62;= 0; --i )
+    unput( yytext[i] );
+unput( '(' );
+}
+</PRE>
+<P>
+Note that since each <CODE>unput</CODE> puts the  given  character
+back at the beginning of the input stream, pushing back
+strings must be done back-to-front.
+<P>
+<DT><CODE>input()</CODE>
+<DD>reads the next character from the input stream.  For example, the
+following is one way to eat up C comments:
+<P>
+<PRE>
+%%
+"/*"        {
+            register int c;
+
+            for ( ; ; )
+                {
+                while ( (c = input()) != '*' &#38;&#38;
+                        c != EOF )
+                    ; /* eat up text of comment */
+
+                if ( c == '*' )
+                    {
+                    while ( (c = input()) == '*' )
+                        ;
+                    if ( c == '/' )
+                        break; /* found the end */
+                    }
+
+                if ( c == EOF )
+                    {
+                    error( "EOF in comment" );
+                    break;
+                    }
+                }
+            }
+</PRE>
+<P>
+(Note that if the scanner is compiled using C++, then <CODE>input</CODE> is
+instead referred to as <CODE>yyinput</CODE>, in order to avoid a name clash
+with the C++ stream named <CODE>input</CODE>.)
+<P>
+<DT><CODE>yyterminate()</CODE>
+<DD>can be used in lieu of a <CODE>return</CODE> statement in an action.  It terminates
+the scanner and returns a 0 to the scanner's caller, indicating
+<SAMP>`all done'</SAMP>.  Subsequent calls to the scanner will immediately
+return unless preceded by a call to <CODE>yyrestart</CODE> (see below).  By
+default, <CODE>yyterminate</CODE> is also called when an end-of-file is
+encountered.  It is a macro and may be redefined.
+</DL>
+<P>
+<H2><A NAME="SEC10" HREF="flex_toc.html#SEC10">The Generated Scanner</A></H2>
+<P>
+The output of <CODE>flex</CODE> is the file <TT>`lex.yy.c'</TT>, which contains
+the scanning routine <CODE>yylex</CODE>, a number of tables used by it for
+matching tokens, and a number of auxiliary routines and macros.  By
+default, <CODE>yylex</CODE> is declared as follows:
+<P>
+<PRE>
+int yylex()
+    {
+    ... various definitions and the actions in here ...
+    }
+</PRE>
+<P>
+(If your environment supports function prototypes, then it will be
+<SAMP>`int yylex( void )'</SAMP>.)  This definition may be changed by redefining
+the <CODE>YY_DECL</CODE> macro.  For example, you could use:
+<P>
+<PRE>
+#undef YY_DECL
+#define YY_DECL float lexscan( a, b ) float a, b;
+</PRE>
+<P>
+to give the scanning routine the name <CODE>lexscan</CODE>, returning a
+<CODE>float</CODE>, and taking two <CODE>float</CODE> values as arguments.  Note
+that if you give arguments to the scanning routine using a
+K&#38;R-style/non-prototyped function declaration, you must terminate the
+definition with a semicolon (<SAMP>`;'</SAMP>).
+<P>
+Whenever <CODE>yylex</CODE> is called, it scans tokens from the global input
+file <TT>`yyin'</TT> (which defaults to <TT>`stdin'</TT>).  It continues until
+it either reaches an end-of-file (at which point it returns the value 0)
+or one of its actions executes a return statement.  In the former case,
+when called again the scanner will immediately return unless
+<CODE>yyrestart</CODE> is called to point <TT>`yyin'</TT> at the new input file.
+(<CODE>yyrestart</CODE> takes one argument, a <SAMP>`FILE *'</SAMP> pointer.) In the
+latter case (i.e., when an action executes a return), the scanner may
+then be called again and it will resume scanning where it left off.
+<P>
+By default (and for efficiency), the scanner uses block-reads rather
+than simple <CODE>getc</CODE> calls to read characters from <TT>`yyin'</TT>.  You
+can control how it gets input by redefining the <CODE>YY_INPUT</CODE> macro.
+<CODE>YY_INPUT</CODE>'s calling sequence is
+<SAMP>`YY_INPUT(<VAR>buf</VAR>,<VAR>result</VAR>,<VAR>max_size</VAR>)'</SAMP>.  Its action is
+to place up to <VAR>max_size</VAR> characters in the character array
+<VAR>buf</VAR> and return in the integer variable result either the number of
+characters read or the constant <CODE>YY_NULL</CODE> (0 on Unix systems) to
+indicate EOF.  The default <CODE>YY_INPUT</CODE> reads from the global
+file-pointer <TT>`yyin'</TT>.
+<P>
+A sample redefinition of <CODE>YY_INPUT</CODE> (in the definitions section
+of the input file):
+<P>
+<PRE>
+%{
+#undef YY_INPUT
+#define YY_INPUT(buf,result,max_size) \
+    { \
+    int c = getchar(); \
+    result = (c == EOF) ? YY_NULL : (buf[0] = c, 1); \
+    }
+%}
+</PRE>
+<P>
+This definition will change the input processing to occur one character
+at a time.
+<P>
+You also can add in things like keeping track of the input line number
+this way; but don't expect your scanner to go very fast.
+<P>
+When the scanner receives an end-of-file indication from
+<CODE>YY_INPUT</CODE>, it then checks the <CODE>yywrap</CODE> function.  If
+<CODE>yywrap</CODE> returns false (zero), then it is assumed that the function
+has gone ahead and set up <TT>`yyin'</TT> to point to another input file,
+and scanning continues.  If it returns true (non-zero), then the
+scanner terminates, returning 0 to its caller.
+<P>
+The default <CODE>yywrap</CODE> always returns 1.  At present, to redefine it
+you must first <SAMP>`#undef yywrap'</SAMP>, as it is currently implemented as a
+macro.  As indicated by the hedging in the previous sentence, it may be
+changed to a true function in the near future.
+<P>
+The scanner writes its  <CODE>ECHO</CODE>  output  to  the  <TT>`yyout'</TT>  global
+(default, <TT>`stdout'</TT>), which may be redefined by the user simply
+by assigning it to some other <CODE>FILE</CODE> pointer.
+<P>
+<H2><A NAME="SEC11" HREF="flex_toc.html#SEC11">Start Conditions</A></H2>
+<P>
+<CODE>flex</CODE> provides a mechanism for conditionally activating rules.
+Any rule whose pattern is prefixed with <SAMP>`&#60;<VAR>sc</VAR>&#62;'</SAMP> will only be
+active when the scanner is in the start condition named <VAR>sc</VAR>.  For
+example,
+<P>
+<PRE>
+&#60;STRING&#62;[^"]*        { /* eat up the string body ... */
+            ...
+            }
+</PRE>
+<P>
+will be active only when the  scanner  is  in  the  <SAMP>`STRING'</SAMP>
+start condition, and
+<P>
+<PRE>
+&#60;INITIAL,STRING,QUOTE&#62;\.        { /* handle an escape ... */
+            ...
+            }
+</PRE>
+<P>
+will be active only when the current start condition is either
+<SAMP>`INITIAL'</SAMP>, <SAMP>`STRING'</SAMP>, or <SAMP>`QUOTE'</SAMP>.
+<P>
+Start conditions are declared in the definitions (first) section of the
+input using unindented lines beginning with either <SAMP>`%s'</SAMP> or
+<SAMP>`%x'</SAMP> followed by a list of names.  The former declares
+<EM>inclusive</EM> start conditions, the latter <EM>exclusive</EM> start
+conditions.  A start condition is activated using the <CODE>BEGIN</CODE>
+action.  Until the next <CODE>BEGIN</CODE> action is executed, rules with the
+given start condition will be active and rules with other start
+conditions will be inactive.  If the start condition is inclusive, then
+rules with no start conditions at all will also be active.  If it is
+exclusive, then only rules qualified with the start condition will be
+active.  A set of rules contingent on the same exclusive start condition
+describe a scanner which is independent of any of the other rules in the
+<CODE>flex</CODE> input.  Because of this, exclusive start conditions make it
+easy to specify "miniscanners" which scan portions of the input that
+are syntactically different from the rest (e.g., comments).
+<P>
+If the distinction between inclusive and exclusive start conditions is
+still a little vague, here's a simple example illustrating the
+connection between the two.  The set of rules:
+<P>
+<PRE>
+%s example
+%%
+&#60;example&#62;foo           /* do something */
+</PRE>
+<P>
+is equivalent to
+<P>
+<PRE>
+%x example
+%%
+&#60;INITIAL,example&#62;foo   /* do something */
+</PRE>
+<P>
+The default rule (to ECHO any unmatched character) remains active in
+start conditions.
+<P>
+<SAMP>`BEGIN(0)'</SAMP> returns to the original state where only the rules with
+no start conditions are active.  This state can also be referred to as
+the start-condition <SAMP>`INITIAL'</SAMP>, so <SAMP>`BEGIN(INITIAL)'</SAMP> is
+equivalent to <SAMP>`BEGIN(0)'</SAMP>. (The parentheses around the start
+condition name are not required but are considered good style.)
+<P>
+<CODE>BEGIN</CODE> actions can also be given as indented code at the beginning
+of the rules section.  For example, the following will cause the scanner
+to enter the <SAMP>`SPECIAL'</SAMP> start condition whenever <CODE>yylex</CODE> is
+called and the global variable enter_special is true:
+<P>
+<PRE>
+        int enter_special;
+
+%x SPECIAL
+%%
+        if ( enter_special )
+            BEGIN(SPECIAL);
+
+&#60;SPECIAL&#62;blahblahblah
+... more rules follow ...
+</PRE>
+<P>
+To illustrate the uses of start conditions, here is a scanner which
+provides two different interpretations of a string like <SAMP>`123.456'</SAMP>.
+By default this scanner will treat the string as three tokens: the
+integer <SAMP>`123'</SAMP>, a dot <SAMP>`.'</SAMP>, and the integer <SAMP>`456'</SAMP>.  But if
+the string is preceded earlier in the line by the string
+<SAMP>`expect-floats'</SAMP> it will treat it as a single token, the
+floating-point number <CODE>123.456</CODE>:
+<P>
+<PRE>
+%{
+#include &#60;math.h&#62;
+%}
+%s expect
+
+%%
+expect-floats        BEGIN(expect);
+
+&#60;expect&#62;[0-9]+"."[0-9]+      {
+            printf( "found a float, = %f\n",
+                    atof( yytext ) );
+            }
+&#60;expect&#62;\n           {
+            /* that's the end of the line, so
+             * we need another "expect-number"
+             * before we'll recognize any more
+             * numbers
+             */
+            BEGIN(INITIAL);
+            }
+
+[0-9]+      {
+            printf( "found an integer, = %d\n",
+                    atoi( yytext ) );
+            }
+
+"."         printf( "found a dot\n" );
+</PRE>
+<P>
+Here is a scanner which recognizes (and discards) C comments while
+maintaining a count of the current input line.
+<P>
+<PRE>
+%x comment
+%%
+        int line_num = 1;
+
+"/*"         BEGIN(comment);
+
+&#60;comment&#62;[^*\n]*        /* eat anything that's not a '*' */
+&#60;comment&#62;"*"+[^*/\n]*   /* eat up '*'s not followed by '/'s */
+&#60;comment&#62;\n             ++line_num;
+&#60;comment&#62;"*"+"/"        BEGIN(INITIAL);
+</PRE>
+<P>
+Note that start-conditions names are really integer values and can be
+stored as such.  Thus, the above could be extended in the following
+fashion:
+<P>
+<PRE>
+%x comment foo
+%%
+        int line_num = 1;
+        int comment_caller;
+
+"/*"         {
+             comment_caller = INITIAL;
+             BEGIN(comment);
+             }
+
+...
+
+&#60;foo&#62;"/*"    {
+             comment_caller = foo;
+             BEGIN(comment);
+             }
+
+&#60;comment&#62;[^*\n]*        /* eat anything that's not a '*' */
+&#60;comment&#62;"*"+[^*/\n]*   /* eat up '*'s not followed by '/'s */
+&#60;comment&#62;\n             ++line_num;
+&#60;comment&#62;"*"+"/"        BEGIN(comment_caller);
+</PRE>
+<P>
+One can then implement a "stack" of start conditions using an array of
+integers.  (It is likely that such stacks will become a full-fledged
+<CODE>flex</CODE> feature in the future.)  Note, though, that start conditions
+do not have their own namespace; <SAMP>`%s'</SAMP> and <SAMP>`%x'</SAMP> declare names
+in the same fashion as <CODE>#define</CODE>.
+<P>
+<H2><A NAME="SEC12" HREF="flex_toc.html#SEC12">Multiple Input Buffers</A></H2>
+<P>
+Some scanners (such as those which support "include" files) require
+reading from several input streams.  As <CODE>flex</CODE> scanners do a large
+amount of buffering, one cannot control where the next input will be
+read from by simply writing a <CODE>YY_INPUT</CODE> which is sensitive to the
+scanning context.  <CODE>YY_INPUT</CODE> is only called when the scanner
+reaches the end of its buffer, which may be a long time after scanning a
+statement such as an "include" which requires switching the input
+source.
+<P>
+To negotiate these sorts of problems, <CODE>flex</CODE> provides a mechanism
+for creating and switching between multiple input buffers.  An input
+buffer is created by using:
+<P>
+<PRE>
+YY_BUFFER_STATE yy_create_buffer( FILE *<VAR>file</VAR>, int <VAR>size</VAR> )
+</PRE>
+<P>
+which takes a <CODE>FILE</CODE> pointer and a size and creates a buffer
+associated with the given file and large enough to hold <VAR>size</VAR>
+characters (when in doubt, use <CODE>YY_BUF_SIZE</CODE> for the size).  It
+returns a <CODE>YY_BUFFER_STATE</CODE> handle, which may then be passed to
+other routines:
+<P>
+<PRE>
+void yy_switch_to_buffer( YY_BUFFER_STATE <VAR>new_buffer</VAR> )
+</PRE>
+<P>
+switches the scanner's input buffer so subsequent tokens will come from
+<VAR>new_buffer</VAR>. Note that <CODE>yy_switch_to_buffer</CODE> may be used by
+<CODE>yywrap</CODE> to sets things up for continued scanning, instead of
+opening a new file and pointing <TT>`yyin'</TT> at it.
+<P>
+<PRE>
+void yy_delete_buffer( YY_BUFFER_STATE <VAR>buffer</VAR> )
+</PRE>
+<P>
+is used to reclaim the storage associated with a buffer.
+<P>
+<CODE>yy_new_buffer</CODE> is an alias for <CODE>yy_create_buffer</CODE>, provided
+for compatibility with the C++ use of <CODE>new</CODE> and <CODE>delete</CODE> for
+creating and destroying dynamic objects.
+<P>
+Finally, the <CODE>YY_CURRENT_BUFFER</CODE> macro returns a
+<CODE>YY_BUFFER_STATE</CODE> handle to the current buffer.
+<P>
+Here is an example of using these features for writing a scanner which
+expands include files (the <SAMP>`&#60;&#60;EOF&#62;&#62;'</SAMP> feature is discussed below):
+<P>
+<PRE>
+/* the "incl" state is used for picking up the name
+ * of an include file
+ */
+%x incl
+
+%{
+#define MAX_INCLUDE_DEPTH 10
+YY_BUFFER_STATE include_stack[MAX_INCLUDE_DEPTH];
+int include_stack_ptr = 0;
+%}
+
+%%
+include             BEGIN(incl);
+
+[a-z]+              ECHO;
+[^a-z\n]*\n?        ECHO;
+
+&#60;incl&#62;[ \t]*      /* eat the whitespace */
+&#60;incl&#62;[^ \t\n]+   { /* got the include file name */
+        if ( include_stack_ptr &#62;= MAX_INCLUDE_DEPTH )
+            {
+            fprintf( stderr, "Includes nested too deeply" );
+            exit( 1 );
+            }
+
+        include_stack[include_stack_ptr++] =
+            YY_CURRENT_BUFFER;
+
+        yyin = fopen( yytext, "r" );
+
+        if ( ! yyin )
+            error( ... );
+
+        yy_switch_to_buffer(
+            yy_create_buffer( yyin, YY_BUF_SIZE ) );
+
+        BEGIN(INITIAL);
+        }
+
+&#60;&#60;EOF&#62;&#62; {
+        if ( --include_stack_ptr &#60; 0 )
+            {
+            yyterminate();
+            }
+
+        else
+            yy_switch_to_buffer(
+                 include_stack[include_stack_ptr] );
+        }
+</PRE>
+<P>
+<H2><A NAME="SEC13" HREF="flex_toc.html#SEC13">End-of-File Rules</A></H2>
+<P>
+The special rule <SAMP>`&#60;&#60;EOF&#62;&#62;'</SAMP> indicates actions which are to be taken
+when an end-of-file is encountered and <CODE>yywrap</CODE> returns non-zero
+(i.e., indicates no further files to process).  The action must finish
+by doing one of four things:
+<P>
+<UL>
+<LI>
+the special <CODE>YY_NEW_FILE</CODE> action, if <TT>`yyin'</TT> has been pointed
+at a new file to process;
+<P>
+<LI>
+a return statement;
+<P>
+<LI>
+the special <CODE>yyterminate</CODE> action;
+<P>
+<LI>
+or switching to a new buffer using <CODE>yy_switch_to_buffer</CODE> as shown
+in the example above.
+</UL>
+<P>
+<SAMP>`&#60;&#60;EOF&#62;&#62;'</SAMP> rules may not be used with other patterns; they may only
+be qualified with a list of start conditions.  If an unqualified
+<SAMP>`&#60;&#60;EOF&#62;&#62;'</SAMP> rule is given, it applies to all start conditions which
+do not already have <SAMP>`&#60;&#60;EOF&#62;&#62;'</SAMP> actions.  To specify an
+<SAMP>`&#60;&#60;EOF&#62;&#62;'</SAMP> rule for only the initial start condition, use
+<P>
+<PRE>
+&#60;INITIAL&#62;&#60;&#60;EOF&#62;&#62;
+</PRE>
+<P>
+These rules are useful for catching things like unclosed comments.  An
+example:
+<P>
+<PRE>
+%x quote
+%%
+
+... other rules for dealing with quotes ...
+
+&#60;quote&#62;&#60;&#60;EOF&#62;&#62;   {
+         error( "unterminated quote" );
+         yyterminate();
+         }
+&#60;&#60;EOF&#62;&#62;  {
+         if ( *++filelist )
+             {
+             yyin = fopen( *filelist, "r" );
+             YY_NEW_FILE;
+             }
+         else
+            yyterminate();
+         }
+</PRE>
+<P>
+<H2><A NAME="SEC14" HREF="flex_toc.html#SEC14">Miscellaneous Macros</A></H2>
+<P>
+The macro <CODE>YY_USER_ACTION</CODE> can be redefined to provide an action
+which is always executed prior to the matched rule's action.  For
+example, it could be <CODE>#define</CODE>d to call a routine to convert
+<CODE>yytext</CODE> to lower-case.
+<P>
+The macro <CODE>YY_USER_INIT</CODE> may be redefined to provide an action
+which is always executed before the first scan (and before the scanner's
+internal initializations are done).  For example, it could be used to
+call a routine to read in a data table or open a logging file.
+<P>
+In the generated scanner, the actions are all gathered in one large
+switch statement and separated using <CODE>YY_BREAK</CODE>, which may be
+redefined.  By default, it is simply a <CODE>break</CODE>, to separate each
+rule's action from the following rule's.  Redefining <CODE>YY_BREAK</CODE>
+allows, for example, C++ users to <SAMP>`#define YY_BREAK'</SAMP> to do nothing
+(while being very careful that every rule ends with a <CODE>break</CODE> or a
+<CODE>return</CODE>!) to avoid suffering from unreachable statement warnings
+where because a rule's action ends with <CODE>return</CODE>, the
+<CODE>YY_BREAK</CODE> is inaccessible.
+<P>
+<H2><A NAME="SEC15" HREF="flex_toc.html#SEC15">Interfacing with Parser Generators</A></H2>
+One of the main uses of <CODE>flex</CODE> is as a companion to parser
+generators like <CODE>yacc</CODE>.  <CODE>yacc</CODE> parsers expect to call a
+routine named <CODE>yylex</CODE> to find the next input token.  The routine is
+supposed to return the type of the next token as well as putting any
+associated value in the global <CODE>yylval</CODE>.  To use <CODE>flex</CODE> with
+<CODE>yacc</CODE>, specify the <SAMP>`-d'</SAMP> option to <CODE>yacc</CODE> to instruct it
+to generate the file <CODE>y.tab.h</CODE> containing definitions of all the
+<CODE>%token</CODE>s appearing in the <CODE>yacc</CODE> input.  Then include this
+file in the <CODE>flex</CODE> scanner.  For example, if one of the tokens is
+<SAMP>`TOK_NUMBER'</SAMP>, part of the scanner might look like:
+<P>
+<PRE>
+%{
+#include "y.tab.h"
+%}
+
+%%
+
+[0-9]+        yylval = atoi( yytext ); return TOK_NUMBER;
+</PRE>
+<P>
+<H2><A NAME="SEC16" HREF="flex_toc.html#SEC16">Translation Table</A></H2>
+<P>
+In the name of POSIX compliance, <CODE>flex</CODE> supports a translation
+table  for  mapping input characters into groups.  The table
+is specified in the first  section,  and  its  format  looks
+like:
+<P>
+<PRE>
+%t
+1        abcd
+2        ABCDEFGHIJKLMNOPQRSTUVWXYZ
+52       0123456789
+6        \t\ \n
+%t
+</PRE>
+<P>
+This example specifies that the characters <SAMP>`a'</SAMP>, <SAMP>`b'</SAMP>, <SAMP>`c'</SAMP>,
+and <SAMP>`d'</SAMP> are to all be lumped into group #1, upper-case letters in
+group #2, digits in group #52, tabs, blanks, and newlines into group #6,
+and no other characters will appear in the patterns.  The group numbers
+are actually disregarded by <CODE>flex</CODE>; <CODE>%t</CODE> serves, though, to
+lump characters together.  Given the above table, for example, the
+pattern <SAMP>`a(AA)*5'</SAMP> is equivalent to <SAMP>`d(ZQ)*0'</SAMP>.  They both say,
+"match any character in group #1, followed by zero or more pairs of
+characters from group #2, followed by a character from group #52."
+Thus <SAMP>`%t'</SAMP> provides a crude way for introducing equivalence classes
+into the scanner specification.
+<P>
+Note that  the  <SAMP>`-i'</SAMP>  option  (see  below)  coupled  with  the
+equivalence  classes which <CODE>flex</CODE> automatically generates take
+care of virtually all the instances when one might  consider
+using <SAMP>`%t'</SAMP>. But what the hell, it's there if you want it.
+<P>
+<P>Go to the <A HREF="flex_1.html">previous</A>, <A HREF="flex_3.html">next</A> section.<P>
