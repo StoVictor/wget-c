@@ -74,7 +74,7 @@ void create_directory_from_url_part(char **part){
 
 void make_file_or_dir(char *relative_part){
 
-    printf("%s\n", relative_part);
+    //printf("%s\n", relative_part);
     char *tmp=relative_part;
     char *tmp_dir;
     int i=0;
@@ -113,10 +113,10 @@ int get_all_links_on_page(char *filename, char ***ref, int *last_ref, int *size)
     yyin = fopen(filename, "r");
     ntoken = yylex();
 
-    char *names[9] = {NULL, "open href tag", "open src tag", "/> or >", "href", "src", "end href or src", "link", "relative_link"};
+    char *names[9] = {NULL, "open href tag", "open src tag", "/> or >", "href", "src", "end href or src", "LINK", "relative_link"};
 
     while (ntoken) {
-        printf("%s\n", names[ntoken]);
+        printf("TYPE:%s TEXT:%s \n", names[ntoken], yytext);
         if((ntoken == HREF_TAG) && (status == CLOSE_TAG)) {
             status = HREF_TAG;
         } else if ((ntoken == SRC_TAG) && (status == CLOSE_TAG)){
@@ -125,8 +125,9 @@ int get_all_links_on_page(char *filename, char ***ref, int *last_ref, int *size)
             status = HREF;
         } else if ((ntoken == SRC) && (status == SRC_TAG)) {
             status = SRC;
-        } else if((ntoken == LINK) && (status == HREF)){
+        } else if((ntoken == LINK) && ((status == HREF) || (status == SRC))){
             status = LINK;
+            
         } else if ((ntoken == RELATIVE_LINK) && ((status == LINK) || (status == HREF) || (status == SRC))){
             status = RELATIVE_LINK;
             if(is_link_already_in_list(yytext, ref, *last_ref) == 0){ 
@@ -143,11 +144,9 @@ int get_all_links_on_page(char *filename, char ***ref, int *last_ref, int *size)
             status = END_HREF_OR_SRC;
         } else if ((ntoken == CLOSE_TAG)){
             status = CLOSE_TAG;
-        }
-        
+        } 
         ntoken = yylex(); 
     }
-
     free(temp);
     fclose(yyin);
     return 0;
