@@ -14,7 +14,7 @@ href_tags "link"|"a"
 (?i:href)=\"                 return HREF;
 (?i:src)=\"                  return SRC;
 \"                           return END_HREF_OR_SRC;
-https?:\/\/[^ \n<>"]*\/\/      return LINK;
+https?:\/\/[^ \n<>"]*\/\/    return LINK;
 [^ \n<>"?]*                  return RELATIVE_LINK;
 .                            ;
 %%
