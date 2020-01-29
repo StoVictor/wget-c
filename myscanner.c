@@ -138,14 +138,13 @@ bool is_link_refer_to_this_site(char *link, char *url){
    } else {
        min_size = (strlen(link)-k);
    }
-   printf("MUDORAMUDORAMUDORAMUDORA: %s %s \n", link, url);
    for(int i=0; i < min_size; i++){
-        printf("%c|%c ", link[i+k], url[i]);
+        //printf("%c|%c ", link[i+k], url[i]);
         if (link[i+k] != url[i]){
             return false;
         }
    }
-   printf("\n");
+   //printf("\n");
     
    return true;
 }
@@ -177,15 +176,11 @@ bool is_link_is_simple_file(char *link){
     }
     char *htm=".html";
     if ((strchr(link, '/') == NULL)){
-        printf("OVERDRIVE: %s, %ld", link, strlen(link));
         for(int i=len, k=4; i > len-5 && k >= 0; i--, k--){
-            printf("MUDAMUDAMUDA: %c|%c ", link[i], htm[k]);
             if (link[i] != htm[k]){
-                printf("FALSE \n");
                 return false;
             }
         }
-        printf("\n");
         return true;
     }
     return false;
@@ -259,7 +254,7 @@ int get_all_links_on_page(char *filename, char ***ref, int *last_ref, int *size,
     int status = CLOSE_TAG;
 
     char **temp = (char**)malloc(temp_size*sizeof(char*));
-    printf("READ %s %s \n", filename, url);
+    //printf("READ %s %s \n", filename, url);
     yyin = fopen(filename, "r");
     ntoken = yylex();
 
@@ -289,14 +284,12 @@ int get_all_links_on_page(char *filename, char ***ref, int *last_ref, int *size,
                     }
                 }
                 if(is_link_refer_to_this_site(tmp_link, url)){
-                    printf("WHRYYYYYYYYYYYYYYYYY %s %s \n", tmp_link, url);
                     /*if(is_link_already_in_list(tmp_link, ref, *last_ref) == 0){ 
                         add_link_to_list(tmp_link, &temp, &last_temp_ref, &temp_size);
                         add_link_to_list(tmp_link, ref, last_ref, size);
                     }*/
                 }
             } else { 
-                printf("SUUUKAAA \n");
                 add_not_relative_part(&tmp_link, url);
                 if(is_link_already_in_list(tmp_link, ref, *last_ref) == 0){ 
                     add_link_to_list(tmp_link, &temp, &last_temp_ref, &temp_size);
@@ -311,13 +304,12 @@ int get_all_links_on_page(char *filename, char ***ref, int *last_ref, int *size,
         }
         ntoken = yylex(); 
     }
-    printf("LAST_REF: %d \n", *last_ref);
-    printf("LAST_TMP_REF: %d \n", last_temp_ref);
+    //printf("LAST_REF: %d \n", *last_ref);
+    //printf("LAST_TMP_REF: %d \n", last_temp_ref);
     print_link_list(*ref, *last_ref);
     for (int i=0; i < last_temp_ref; i++){
         char *tmp_dir = (char*)malloc(strlen(temp[i])+1);
-        printf("WHAT I CREATE %s \n", make_file_or_dir(temp[i], &tmp_dir));
-        printf("DEPTH: %d \n", *depth);
+        make_file_or_dir(temp[i], &tmp_dir);
         if (*depth < 10){
             (*depth) += 1;
             get_all_links_on_page(tmp_dir, ref, last_ref, size, url, depth);
