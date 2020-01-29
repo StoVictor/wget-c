@@ -334,9 +334,6 @@ int main(int argc, char *argv[]){
     char *filename = argv[2];
     get_page(argv[1], filename); 
     get_all_links_on_page(filename, &ref, &last_ref, &size, url, &depth);
-    //make_file_or_dir(ref[0]);
-    // grab links that doesnt belongs to site
-    // bad cat url with relative part
     free(url);
     free(ref);
 
